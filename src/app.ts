@@ -32,7 +32,8 @@ app.use(express.json());
 
 app.use(cors({
     origin: process.env.CLIENT_URL ? [process.env.CLIENT_URL, "http://localhost:3000", "https://airbnb-clone-git-dev-arif-hossainarif37.vercel.app"] : "http://localhost:3000" || '*',
-    // credentials: true
+    methods: "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+    credentials: true
 }));
 // app.use(cookieParser());
 
@@ -49,6 +50,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Passport and Session Initialize
 app.use(passport.initialize());
+app.use(passport.session());
 
 // Home route
 app.get('/', (req, res) => {

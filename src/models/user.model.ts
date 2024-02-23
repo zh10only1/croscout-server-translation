@@ -2,9 +2,10 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface UserDocument extends Document {
     _id: mongoose.Types.ObjectId;
+    googleId?: string
     name: string;
     email: string;
-    password: string;
+    password?: string;
     role: 'user' | 'agent' | 'admin';
     taxNumber: string;
     isCompletedProfile: boolean;
@@ -29,9 +30,10 @@ export interface UserDocument extends Document {
 
 
 const userSchema: Schema = new Schema({
+    googleId: { type: 'string' },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    password: { type: String, required: false },
     role: { type: String, enum: ['user', 'agent', 'admin'], required: true, default: 'user' },
     taxNumber: { type: String },
     isCompletedProfile: { type: Boolean, default: false },

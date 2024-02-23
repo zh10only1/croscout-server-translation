@@ -1,3 +1,5 @@
+import { authGoogle, authGoogleCallback } from "../controllers/auth.controller";
+
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/auth.controller');
@@ -82,6 +84,13 @@ router
     * @throws {404} If the user does not exist
     */
     .post('/reset-password', authController.resetPassword)
+
+
+    // Route to initiate Google authentication
+    .get('/google', authGoogle)
+
+    // Route to handle Google authentication callback
+    .get('/google/callback', authGoogleCallback)
 
 
 module.exports = router;

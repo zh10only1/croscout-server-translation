@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import { transporter } from '../utility/mailer';
+import passport from 'passport';
 
 
 dotenv.config();
@@ -73,20 +74,18 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
         // Extract email and password from the request body
         const { email, password } = req.body;
 
-        // Validate that 'email' and 'password' fields are present in the request body
-        if (!email || !password) {
-            return res.status(400).json({ success: false, error: 'Email or Password is required' });
+        // Validate that 'email' field is present in the request body
+        if (!email) {
+            return res.status(400).json({ success: false, error: 'Email is required' });
         }
 
         // Find the user by email in the database
         const user = await User.findOne({ email });
-        console.log(user);
 
         // If the user is not found, return an error response
         if (!user) {
             return res.status(404).send({ success: false, error: 'User not found' });
         }
-
         // Create a payload with user information for JWT token
         const payload = {
             id: user._id,
@@ -94,24 +93,38 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
             role: user.role,
         };
 
-        // Compare the provided password with the stored hashed password
-        bcrypt.compare(password, user.password, (err: Error | null, result: boolean) => {
-            if (result) {
-                // If the password matches, generate a JWT token
-                const token = jwt.sign(payload, process.env.JWT_SECRET_KEY!, { expiresIn: '1d' });
+        // If the user has a password (local account), compare the provided password with the stored hashed password
+        if (user.password) {
+            bcrypt.compare(password, user.password, (err: Error | null, result: boolean) => {
+                if (result) {
+                    // If the password matches, generate a JWT token
+                    const token = jwt.sign(payload, process.env.JWT_SECRET_KEY!, { expiresIn: '1d' });
 
-                // Send a success response with the token and user information
-                res.status(200).send({
-                    success: true,
-                    message: "Login in successfully",
-                    token: `Bearer ${token}`,
-                    user
-                });
-            } else {
-                // If the password does not match, return an error response
-                res.status(401).send({ success: false, error: 'Wrong password' });
-            }
-        });
+                    // Send a success response with the token and user information
+                    res.status(200).send({
+                        success: true,
+                        message: "Login in successfully",
+                        token: `Bearer ${token}`,
+                        user
+                    });
+                } else {
+                    // If the password does not match, return an error response
+                    res.status(401).send({ success: false, error: 'Wrong password' });
+                }
+            });
+        } else {
+            // If the user does not have a password (Google account), they are already authenticated
+            // Generate a JWT token
+            const token = jwt.sign(payload, process.env.JWT_SECRET_KEY!, { expiresIn: '1d' });
+
+            // Send a success response with the token and user information
+            res.status(200).send({
+                success: true,
+                message: "Login in successfully",
+                token: `Bearer ${token}`,
+                user
+            });
+        }
     } catch (error) {
         // If there's an error, pass it to the next middleware
         next(error);
@@ -250,4 +263,37 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
         console.error('Error in resetPassword: ', error);
         next(error)
     }
+};
+
+
+// Initiate Google authentication
+export const authGoogle = passport.authenticate('google', {
+    scope: ['profile', 'email'],
+});
+
+// Handle Google authentication callback with a custom callback
+export const authGoogleCallback = (req: Request, res: Response, next: NextFunction) => {
+    passport.authenticate('google', (err: any, user: UserDocument, info: any) => {
+        if (err) {
+            console.error('Error during Google authentication:', err); // Log the error for debugging
+            return next(err);
+        }
+        if (!user) {
+            // Send a JSON response with an error message
+            return res.status(401).json({ success: false, error: 'Authentication failed. Please try again.' });
+        }
+        req.logIn(user, (err) => {
+            if (err) {
+                console.error('Error during login:', err); // Log the error for debugging
+                return next(err);
+            }
+            // Check some condition to decide where to redirect the user
+            if (user.isAdmin) {
+                // Send a JSON response with a success message and a URL to redirect to the admin dashboard
+                return res.redirect(`${process.env.CLIENT_URL}/dashboard`)
+            } else {
+                return res.redirect(`${process.env.CLIENT_URL}/dashboard/user/my-bookings`)
+            }
+        });
+    })(req, res, next);
 };
