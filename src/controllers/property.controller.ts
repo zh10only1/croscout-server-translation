@@ -2,6 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import Property from '../models/property.model';
 import User from '../models/user.model';
 
+import { translateText } from '../utility/translation';
+
+interface Property {
+    [key: string]: string;
+}
+
 export const createProperty = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const property = new Property(req.body);
@@ -164,11 +170,43 @@ export const updateProperty = async (req: Request, res: Response, next: NextFunc
         if (!updatedProperty) {
             return res.status(404).json({ success: false, error: 'Property not found' });
         }
-
         // Respond with a success message indicating the property was updated
         res.status(200).json({ success: true, message: 'Updated Successfully' });
     } catch (error) {
         // Pass any errors to the next middleware for error handling
         next(error);
     }
+};
+
+export const translateProperties = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { properties, lng }: { properties: Property[], lng: string } = req.body;
+
+        if (!properties || !Array.isArray(properties))  return res.status(400).json({ error: 'Invalid properties format' });
+        if (!lng) return res.status(400).json({ error: 'Language parameter is required' });
+        
+        const translatedProperties = await Promise.all(properties.map((property) => translateProperty(property, lng)));
+        res.status(200).json({ success: true, translatedProperties });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to translate properties' });
+    }
+};
+
+const translateProperty = async (property: Property, targetLang: string): Promise<Property> => {
+    const propertyValues = Object.values(property).join('\n');
+
+    let translatedText = '';
+    try {
+        translatedText = await translateText(propertyValues, targetLang);
+    } catch (error) {
+        console.log("Msla");
+    }
+    const translatedValues = translatedText.split('\n');
+
+    const translatedProperty = Object.keys(property).reduce((acc, key, index) => {
+        acc[key] = translatedValues[index];
+        return acc;
+    }, {} as Property);
+    
+    return translatedProperty;
 };
