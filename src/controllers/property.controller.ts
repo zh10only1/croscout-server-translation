@@ -5,7 +5,7 @@ import User from '../models/user.model';
 import { translateText } from '../utility/translation';
 
 interface Property {
-    [key: string]: string;
+    [key: string]: any;
 }
 
 export const createProperty = async (req: Request, res: Response, next: NextFunction) => {
@@ -186,6 +186,7 @@ export const translateProperties = async (req: Request, res: Response, next: Nex
         if (!lng) return res.status(400).json({ error: 'Language parameter is required' });
         
         const translatedProperties = await Promise.all(properties.map((property) => translateProperty(property, lng)));
+
         res.status(200).json({ success: true, translatedProperties });
     } catch (error) {
         res.status(500).json({ error: 'Failed to translate properties' });
@@ -193,20 +194,41 @@ export const translateProperties = async (req: Request, res: Response, next: Nex
 };
 
 const translateProperty = async (property: Property, targetLang: string): Promise<Property> => {
-    const propertyValues = Object.values(property).join('\n');
+    const translatableFields = ['name', 'location', 'state', 'propertyType'];
+
+    console.log(targetLang);
+
+    console.log(property);
+
+    // Combine all field values into a single string separated by newlines
+    const propertyText = translatableFields
+        .map(field => property[field])
+        .join('\n');
+
+    console.log("Property text", propertyText);        
 
     let translatedText = '';
     try {
-        translatedText = await translateText(propertyValues, targetLang);
+        translatedText = await translateText(propertyText, targetLang);
     } catch (error) {
-        console.log("Msla");
+        console.error("Failed to translate key value pairs of property");
+        console.log(property);
+        return property; // Return original property if translation fails
     }
-    const translatedValues = translatedText.split('\n');
 
-    const translatedProperty = Object.keys(property).reduce((acc, key, index) => {
-        acc[key] = translatedValues[index];
-        return acc;
-    }, {} as Property);
-    
+    console.log("TranslatedText: ", translatedText);
+
+    // Split the translated text back into individual field values
+    const translatedValues = translatedText.split('\n');
+    const translatedProperty = { ...property };
+
+    // Assign the translated values back to the respective fields
+    translatableFields.forEach((field, index) => {
+        translatedProperty[field] = translatedValues[index];
+    });
+
+    console.log(translatedProperty);
+
+
     return translatedProperty;
 };
