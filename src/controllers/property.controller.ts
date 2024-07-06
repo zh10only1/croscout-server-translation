@@ -196,27 +196,18 @@ export const translateProperties = async (req: Request, res: Response, next: Nex
 const translateProperty = async (property: Property, targetLang: string): Promise<Property> => {
     const translatableFields = ['name', 'location', 'state', 'propertyType'];
 
-    console.log(targetLang);
-
-    console.log(property);
-
     // Combine all field values into a single string separated by newlines
     const propertyText = translatableFields
         .map(field => property[field])
-        .join('\n');
-
-    console.log("Property text", propertyText);        
+        .join('\n'); 
 
     let translatedText = '';
     try {
         translatedText = await translateText(propertyText, targetLang);
     } catch (error) {
         console.error("Failed to translate key value pairs of property");
-        console.log(property);
         return property; // Return original property if translation fails
     }
-
-    console.log("TranslatedText: ", translatedText);
 
     // Split the translated text back into individual field values
     const translatedValues = translatedText.split('\n');
@@ -226,9 +217,6 @@ const translateProperty = async (property: Property, targetLang: string): Promis
     translatableFields.forEach((field, index) => {
         translatedProperty[field] = translatedValues[index];
     });
-
-    console.log(translatedProperty);
-
 
     return translatedProperty;
 };

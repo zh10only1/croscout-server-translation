@@ -15,14 +15,9 @@ export const translateText = async (text: string, targetLang: string): Promise<s
             headers: { "Content-Type": "application/json" }
         });
 
-        console.log("Response", response);
-
         result = await response.json();
     } catch (error) {
         console.error("Error", error)
     }
-
-
-    console.log("hehe", result.translatedText);
     return result.translatedText;
 };
