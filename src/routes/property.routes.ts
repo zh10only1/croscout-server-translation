@@ -1,6 +1,6 @@
 const express = require('express');
 import { createFeedback, getFeedbacksForProperty } from '../controllers/feedback.controller';
-import { createProperty, getProperties, getSingleProperty, getPropertiesByUser, updateProperty, deleteProperty, translateProperties } from '../controllers/property.controller';
+import { createProperty, getProperties, getSingleProperty, getPropertiesByUser, updateProperty, deleteProperty, translateProperties, testOpenAI } from '../controllers/property.controller';
 import { checkSecureUser } from '../middleware/authentication';
 
 const router = express.Router();
@@ -25,7 +25,6 @@ router
     *   
     * @returns {object} - Status and an array of properties
     */
-
     .get('/', getProperties)
 
     // Translate All Properties
@@ -37,6 +36,16 @@ router
     * @returns {object} - Status and an array of properties
     */
     .post('/translateProperties', translateProperties)
+
+    /** 
+    @route GET /api/properties/testOpenAI
+    @description Tests the OpenAI API
+    @access Public
+
+    @returns {object}
+    */
+    .get('/testOpenAI', testOpenAI)
+
     // Get a Single Property by Property ID
     /**
     * @route GET /api/properties/:id
