@@ -276,12 +276,24 @@ const translateProperty = async (property: Property, targetLang: string): Promis
         translatedProperty[field] = translatedValues[index];
     });
 
+    if (!translatedProperty.amenities || translatedProperty.amenities.length === 0) return translatedProperty;
+
+    const amenitiesText: string = property.amenities.join('\n');
+    try {
+        const translatedAmenitiesText: string = await translateText(amenitiesText, targetLang);
+        const translatedAmenities: string[] = translatedAmenitiesText.split('\n').map((amenity: string) => amenity.trim());
+        translatedProperty.amenities = translatedAmenities;
+    } catch (error) {
+        console.error("Failed to translate amenities", error);
+        return translatedProperty;
+    }
+
     return translatedProperty;
 };
 
-export const testOpenAI = async (req: Request, res: Response, next: NextFunction) : Promise<string> => {
+export const testOpenAI = async (req: Request, res: Response, next: NextFunction): Promise<string> => {
     try {
-        const openai : OpenAI = new OpenAI({
+        const openai: OpenAI = new OpenAI({
             apiKey: process.env.OPENAI_API_KEY // This is the default and can be omitted
         });
 

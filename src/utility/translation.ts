@@ -8,8 +8,6 @@ export const translateText = async (text: string, targetLang: string): Promise<s
             source: "auto",
             target: targetLang,
             format: "text",
-            alternatives: 3,
-            api_key: ""
         }),
         headers: { "Content-Type": "application/json" }
     });
