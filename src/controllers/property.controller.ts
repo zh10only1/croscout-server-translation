@@ -252,7 +252,7 @@ const translatePropertyCroatian = async (property: Property): Promise<Property> 
 }
 
 const translateProperty = async (property: Property, targetLang: string, home: boolean): Promise<Property> => {
-    const translatableFields: string[] = home ? ['name', 'location', 'state', 'propertyType'] : ['location', 'state', 'propertyType'];
+    const translatableFields: string[] = home ? ['location', 'state', 'propertyType'] : ['name', 'location', 'state', 'propertyType'];
 
     // Combine all field values into a single string separated by newlines
     const propertyText: string = translatableFields
