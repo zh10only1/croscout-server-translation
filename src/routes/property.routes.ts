@@ -26,7 +26,7 @@ router
     *   
     * @returns {object} - Status and an array of properties
     */
-    .get('/', checkSecureUser, getProperties)
+    .get('/', getProperties)
 
     // Translate All Properties
     /**
