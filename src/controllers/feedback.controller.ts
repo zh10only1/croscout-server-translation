@@ -3,6 +3,18 @@ import Feedback, { IFeedback } from '../models/feedback.model';
 import Property from '../models/property.model';
 import User, { UserDocument } from '../models/user.model';
 import Booking from '../models/booking.model';
+import { translateText } from '../utility/translation';
+
+export interface Feedback {
+    _id: string;
+    property: string;
+    user: string | null;
+    rating: number;
+    comment: string;
+    __v: number;
+    createdAt: string;
+    updatedAt: string;
+}
 
 export const createFeedback = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -52,4 +64,43 @@ export const getFeedbacksForProperty = async (req: Request, res: Response, next:
     } catch (error) {
         next(error);
     }
+};
+
+export const translateFeedbacks = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { feedbacks, lng }: { feedbacks: Feedback[], lng: string } = req.body;
+
+        if (!feedbacks || !Array.isArray(feedbacks)) return res.status(400).json({ success: false, error: 'Invalid feedbacks format' });
+        if (!lng) return res.status(400).json({ success: false, error: 'Language parameter is required' });
+
+        let translatedFeedbacks: Feedback[] = [];
+
+        // hr == Croatian language
+        if (lng === 'hr') {
+            //Handling croatian translation using OpenAI
+            // translatedFeedbacks = await Promise.all(feedbacks.map((property) => translatePropertyCroatian(property)));
+        }
+        else {
+            // Handling other languages using LibreTranslate
+            translatedFeedbacks = await Promise.all(feedbacks.map((feedback) => translateFeedback(feedback, lng)));
+        }
+
+        res.status(200).json({ success: true, translatedFeedbacks });
+    } catch (error) {
+        res.status(500).json({ success: false, error: `Failed to translate feedbacks ${error}` });
+    }
+};
+
+const translateFeedback = async (feedback: Feedback, targetLang: string): Promise<Feedback> => {
+    let translatedComment: string = '';
+
+    try {
+        translatedComment = await translateText(feedback.comment, targetLang);
+    } catch (error) {
+        console.error("Failed to translate comment of feedback", error);
+        return feedback;
+    }
+
+    const translatedFeedback: Feedback = { ...feedback, comment: translatedComment };
+    return translatedFeedback;
 };

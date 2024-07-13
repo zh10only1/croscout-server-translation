@@ -204,7 +204,7 @@ export const translateProperties = async (req: Request, res: Response, next: Nex
 
         res.status(200).json({ success: true, translatedProperties });
     } catch (error) {
-        res.status(500).json({ error: 'Failed to translate properties' });
+        res.status(500).json({ success: false, error: `Failed to translate properties ${error}` });
     }
 };
 

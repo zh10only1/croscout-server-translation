@@ -1,6 +1,7 @@
 const express = require('express');
-import { createFeedback, getFeedbacksForProperty } from '../controllers/feedback.controller';
-import { createProperty, getProperties, getSingleProperty, getPropertiesByUser, updateProperty, deleteProperty, translateProperties, testOpenAI } from '../controllers/property.controller';
+import { createFeedback, getFeedbacksForProperty, translateFeedbacks } from '../controllers/feedback.controller';
+import { createProperty, getProperties, getSingleProperty, getPropertiesByUser, 
+         updateProperty, deleteProperty, translateProperties, testOpenAI } from '../controllers/property.controller';
 import { checkSecureUser } from '../middleware/authentication';
 
 const router = express.Router();
@@ -25,7 +26,7 @@ router
     *   
     * @returns {object} - Status and an array of properties
     */
-    .get('/', getProperties)
+    .get('/', checkSecureUser, getProperties)
 
     // Translate All Properties
     /**
@@ -105,5 +106,7 @@ router
     .post('/feedback', checkSecureUser, createFeedback)
 
     .get('/:propertyId/feedbacks', getFeedbacksForProperty)
+
+    .post('/translateFeedbacks', translateFeedbacks);
 
 module.exports = router;
