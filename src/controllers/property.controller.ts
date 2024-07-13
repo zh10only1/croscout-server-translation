@@ -185,7 +185,7 @@ export const updateProperty = async (req: Request, res: Response, next: NextFunc
 
 export const translateProperties = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { properties, lng, home }: { properties: Property[], lng: string, home: boolean } = req.body;
+        const { properties, lng, completeData = false }: { properties: Property[], lng: string, completeData: boolean } = req.body;
 
         if (!properties || !Array.isArray(properties)) return res.status(400).json({ error: 'Invalid properties format' });
         if (!lng) return res.status(400).json({ error: 'Language parameter is required' });
@@ -199,7 +199,7 @@ export const translateProperties = async (req: Request, res: Response, next: Nex
         }
         else {
             // Handling other languages using LibreTranslate
-            translatedProperties = await Promise.all(properties.map((property) => translateProperty(property, lng, home)));
+            translatedProperties = await Promise.all(properties.map((property) => translateProperty(property, lng, completeData)));
         }
 
         res.status(200).json({ success: true, translatedProperties });
@@ -251,8 +251,8 @@ const translatePropertyCroatian = async (property: Property): Promise<Property> 
     return property;
 }
 
-const translateProperty = async (property: Property, targetLang: string, home: boolean): Promise<Property> => {
-    const translatableFields: string[] = home ? ['location', 'state', 'propertyType'] : ['name', 'location', 'state', 'propertyType'];
+const translateProperty = async (property: Property, targetLang: string, completeData: boolean): Promise<Property> => {
+    const translatableFields: string[] = completeData ? ['name', 'location', 'state', 'propertyType'] : ['location', 'state', 'propertyType'];
 
     // Combine all field values into a single string separated by newlines
     const propertyText: string = translatableFields
@@ -276,7 +276,7 @@ const translateProperty = async (property: Property, targetLang: string, home: b
         translatedProperty[field] = translatedValues[index];
     });
 
-    if (!home) return translatedProperty;
+    if (!completeData) return translatedProperty;
     if (!translatedProperty.amenities || translatedProperty.amenities.length === 0) return translatedProperty;
 
     const amenitiesText: string = property.amenities.join('\n');
