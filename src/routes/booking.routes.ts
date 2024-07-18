@@ -1,6 +1,6 @@
 // routes/bookingRoutes.ts
 import express from 'express';
-import { createBooking, deleteBooking, getAllBookings, getBookingById, getBookingsByRole, manageBookings, submitTransactionId, updatePaymentDetails } from '../controllers/booking.controller';
+import { createBooking, deleteBooking, getAllBookings, getBookingById, getBookingsByRole, manageBookings, submitTransactionId, translateBookings, updatePaymentDetails } from '../controllers/booking.controller';
 import { checkSecureUser } from '../middleware/authentication';
 
 
@@ -120,5 +120,15 @@ router
     * @throws {404} If the booking not found
     */
     .post('/:bookingId/transaction-id', submitTransactionId)
+
+    // Translate All Bookings
+    /**
+    * @route POST /api/bookings/translateBookings
+    * @description Translates all bookings.
+    * @access private
+    *   
+    * @returns {object} - Status and an array of bookings
+    */
+    .post('/translateBookings', translateBookings)
 
 module.exports = router;

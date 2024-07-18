@@ -77,7 +77,7 @@ app.use('/api/user', checkSecureUser, userRoutes);
 app.use('/api/favorites', checkSecureUser, favoritesRoutes);
 
 // Booking Routes
-app.use('/api/bookings', checkSecureUser, bookingRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 // Transaction Routes
 app.use('/api/transactions', checkSecureUser, transactionRoutes);

@@ -22,3 +22,5 @@ export const translateText = async (text: string, targetLang: string): Promise<s
     result = await response.json();
     return result.translatedText;
 };
+
+
