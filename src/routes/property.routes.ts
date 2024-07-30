@@ -38,15 +38,6 @@ router
     */
     .post('/translateProperties', translateProperties)
 
-    /** 
-    @route GET /api/properties/testOpenAI
-    @description Tests the OpenAI API
-    @access Public
-
-    @returns {object}
-    */
-    .get('/testOpenAI', testOpenAI)
-
     // Get a Single Property by Property ID
     /**
     * @route GET /api/properties/:id

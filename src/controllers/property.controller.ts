@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import Property from '../models/property.model';
 import User from '../models/user.model';
 import { config as dotenvConfig } from 'dotenv';
-import { translateText } from '../utility/translation';
+import { supportedLanguages } from '../utility/translation';
 import OpenAI from "openai";
 
 dotenvConfig();
@@ -191,72 +191,13 @@ export const translateProperties = async (req: Request, res: Response, next: Nex
         if (!lng) return res.status(400).json({ error: 'Language parameter is required' });
 
         let translatedProperties: Property[] = [];
-
-        // hr == Croatian language
-        if (lng === 'hr') {
-            //Handling croatian translation using OpenAI
-            translatedProperties = await Promise.all(properties.map((property) => translatePropertyCroatian(property)));
-        }
-        else {
-            // Handling other languages using LibreTranslate
-            translatedProperties = await Promise.all(properties.map((property) => translateProperty(property, lng, completeData)));
-        }
+        translatedProperties = await Promise.all(properties.map((property) => translateProperty(property, lng, completeData)));
 
         res.status(200).json({ success: true, translatedProperties });
     } catch (error) {
         res.status(500).json({ success: false, error: `Failed to translate properties ${error}` });
     }
 };
-
-// export const translateProperty = async (property: Property, targetLang: string, completeData: boolean): Promise<Property> => {
-//     const translatableFields: string[] = completeData ? ['name', 'location', 'state', 'propertyType'] : ['location', 'state', 'propertyType'];
-
-//     // Combine all field values into a single string separated by newlines
-//     const propertyText: string = translatableFields
-//         .map(field => property[field])
-//         .join('\n');
-
-//     let translatedText: string = '';
-//     try {
-//         translatedText = await translateText(propertyText, targetLang);
-//     } catch (error) {
-//         console.error("Failed to translate key value pairs of property", error);
-//         return property; // Return original property if translation fails
-//     }
-
-//     // Split the translated text back into individual field values
-//     const translatedValues: string[] = translatedText.split('\n');
-//     const translatedProperty: Property = { ...property };
-
-//     // Assign the translated values back to the respective fields
-//     translatableFields.forEach((field, index) => {
-//         translatedProperty[field] = translatedValues[index];
-//     });
-
-//     if (!completeData) return translatedProperty;
-//     if (!translatedProperty.amenities || translatedProperty.amenities.length === 0) return translatedProperty;
-
-//     const amenitiesText: string = property.amenities.join('\n');
-//     try {
-//         const translatedAmenitiesText: string = await translateText(amenitiesText, targetLang);
-//         const translatedAmenities: string[] = translatedAmenitiesText.split('\n').map((amenity: string) => amenity.trim());
-//         translatedProperty.amenities = translatedAmenities;
-//     } catch (error) {
-//         console.error("Failed to translate amenities", error);
-//         return translatedProperty;
-//     }
-
-//     if (!translatedProperty.description || translatedProperty.description === '') return translatedProperty;
-
-//     try {
-//         translatedProperty.description = await translateText(translatedProperty.description, targetLang);
-//     } catch (error) {
-//         console.error("Failed to translate Description", error);
-//         return translatedProperty;
-//     }
-
-//     return translatedProperty;
-// };
 
 const translateProperty = async (property: Property, targetLang: string, completeData: boolean): Promise<Property> => {
     const translatableFields: string[] = completeData ? ['name', 'location', 'state', 'propertyType', 'description', 'amenities'] : ['location', 'state', 'propertyType'];
@@ -283,8 +224,8 @@ const translateProperty = async (property: Property, targetLang: string, complet
 
     const params: OpenAI.Chat.ChatCompletionCreateParams = {
         messages: [
-            { role: 'system', content: "You are a helpful assistant that translates a JSON object's values (not keys) into Croatian and returns the JSON object which has the translated values." },
-            { role: 'user', content: `Translate the following JSON object's values to Croatian:\n\n${propertyString}` },
+            { role: 'system', content: `You are a helpful assistant that translates a JSON object's values (not keys) into ${supportedLanguages[targetLang]} Language and returns the JSON object which has the translated values.` },
+            { role: 'user', content: `Translate the following JSON object's values to ${supportedLanguages[targetLang]} Language:\n\n${propertyString}` },
         ],
         model: 'gpt-3.5-turbo',
     };
@@ -309,23 +250,4 @@ const translateProperty = async (property: Property, targetLang: string, complet
 
     const result : Property = { ...property, ...translatedProperty };
     return result;
-}
-
-export const testOpenAI = async (req: Request, res: Response, next: NextFunction): Promise<string> => {
-    try {
-        const openai: OpenAI = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY // This is the default and can be omitted
-        });
-
-        const chatCompletion: OpenAI.Chat.ChatCompletion = await openai.chat.completions.create({
-            messages: [{ role: 'user', content: 'Say this is a test' }],
-            model: 'gpt-3.5-turbo',
-        });
-
-        console.log(chatCompletion);
-    } catch (error) {
-        console.error("Failed to complete chat with OpenAI API", error);
-    }
-
-    return '';
 }
