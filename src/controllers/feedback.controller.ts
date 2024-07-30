@@ -5,6 +5,7 @@ import User, { UserDocument } from '../models/user.model';
 import Booking from '../models/booking.model';
 import { supportedLanguages } from '../utility/translation';
 import OpenAI from "openai";
+import { config as dotenvConfig } from 'dotenv';
 
 dotenvConfig();
 

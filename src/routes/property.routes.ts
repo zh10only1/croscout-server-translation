@@ -1,7 +1,7 @@
 const express = require('express');
 import { createFeedback, getFeedbacksForProperty, translateFeedbacks } from '../controllers/feedback.controller';
 import { createProperty, getProperties, getSingleProperty, getPropertiesByUser, 
-         updateProperty, deleteProperty, translateProperties, testOpenAI } from '../controllers/property.controller';
+         updateProperty, deleteProperty, translateProperties } from '../controllers/property.controller';
 import { checkSecureUser } from '../middleware/authentication';
 
 const router = express.Router();
