@@ -6,7 +6,6 @@ import nodemailer from 'nodemailer';
 import mongoose from 'mongoose';
 import Transaction from '../models/transaction.model';
 import { transporter } from '../utility/mailer';
-import { translateText } from '../utility/translation';
 
 // Define the Owner interface
 interface IOwner {
@@ -476,75 +475,75 @@ export const submitTransactionId = async (req: Request, res: Response, next: Nex
     }
 };
 
-export const translateBookings = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const { bookings, lng }: { bookings: Booking[], lng: string } = req.body;
+// export const translateBookings = async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//         const { bookings, lng }: { bookings: Booking[], lng: string } = req.body;
 
-        if (!bookings || !Array.isArray(bookings)) return res.status(400).json({ error: 'Invalid Bookings format' });
-        if (!lng) return res.status(400).json({ error: 'Language parameter is required' });
+//         if (!bookings || !Array.isArray(bookings)) return res.status(400).json({ error: 'Invalid Bookings format' });
+//         if (!lng) return res.status(400).json({ error: 'Language parameter is required' });
 
-        let translatedBookings: Booking[] = [];
+//         let translatedBookings: Booking[] = [];
 
-        // hr == Croatian language
-        if (lng === 'hr') {
-            //Handling croatian translation using OpenAI
-        //     translatedBookings = await Promise.all(bookings.map((booking) => translatePropertyCroatian(property)));
-        } else {
-            // Handling other languages using LibreTranslate
-            translatedBookings = await Promise.all(bookings.map((booking) => translateBooking(booking, lng)));
-        }
+//         // hr == Croatian language
+//         if (lng === 'hr') {
+//             //Handling croatian translation using OpenAI
+//         //     translatedBookings = await Promise.all(bookings.map((booking) => translatePropertyCroatian(property)));
+//         } else {
+//             // Handling other languages using LibreTranslate
+//             translatedBookings = await Promise.all(bookings.map((booking) => translateBooking(booking, lng)));
+//         }
 
-        res.status(200).json({ success: true, translatedBookings });
-    } catch (error) {
-        res.status(500).json({ success: false, error: `Failed to translate Bookings ${error}` });
-    }
-};
+//         res.status(200).json({ success: true, translatedBookings });
+//     } catch (error) {
+//         res.status(500).json({ success: false, error: `Failed to translate Bookings ${error}` });
+//     }
+// };
 
 
-const translateBooking = async (booking: Booking, targetLang: string): Promise<Booking> => {
-    try {
-        booking.status = await translateText(booking.status, targetLang);
-    } catch (error) {
-        console.error("Failed to translate confirmation status of booking", error);
-        return booking; // Return original booking if translation fails
-    }
+// const translateBooking = async (booking: Booking, targetLang: string): Promise<Booking> => {
+//     try {
+//         booking.status = await translateText(booking.status, targetLang);
+//     } catch (error) {
+//         console.error("Failed to translate confirmation status of booking", error);
+//         return booking; // Return original booking if translation fails
+//     }
 
-    // Combine all field values into a single string separated by newlines
-    const translatableFields: string[] = ['location', 'propertyType'];
-    const propertyText: string = translatableFields
-        .map(field => booking.property[field])
-        .join('\n');
+//     // Combine all field values into a single string separated by newlines
+//     const translatableFields: string[] = ['location', 'propertyType'];
+//     const propertyText: string = translatableFields
+//         .map(field => booking.property[field])
+//         .join('\n');
 
-    let translatedText: string = '';
-    try {
-        translatedText = await translateText(propertyText, targetLang);
-    } catch (error) {
-        console.error("Failed to translate key value pairs of property", error);
-        return booking; // Return original booking if translation fails
-    }
+//     let translatedText: string = '';
+//     try {
+//         translatedText = await translateText(propertyText, targetLang);
+//     } catch (error) {
+//         console.error("Failed to translate key value pairs of property", error);
+//         return booking; // Return original booking if translation fails
+//     }
 
-    // Split the translated text back into individual field values
-    const translatedValues: string[] = translatedText.split('\n');
-    const translatedProperty: Property = { ...booking.property };
+//     // Split the translated text back into individual field values
+//     const translatedValues: string[] = translatedText.split('\n');
+//     const translatedProperty: Property = { ...booking.property };
 
-    // Assign the translated values back to the respective fields
-    translatableFields.forEach((field, index) => {
-        translatedProperty[field] = translatedValues[index];
-    });
+//     // Assign the translated values back to the respective fields
+//     translatableFields.forEach((field, index) => {
+//         translatedProperty[field] = translatedValues[index];
+//     });
 
-    booking.property = translatedProperty;
+//     booking.property = translatedProperty;
 
-    if (!translatedProperty.description || translatedProperty.description === '') return booking;
+//     if (!translatedProperty.description || translatedProperty.description === '') return booking;
 
-    try {
-        translatedProperty.description = await translateText(translatedProperty.description, targetLang);
-    } catch (error) {
-        console.error("Failed to translate Description", error);
-        return booking;
-    }
+//     try {
+//         translatedProperty.description = await translateText(translatedProperty.description, targetLang);
+//     } catch (error) {
+//         console.error("Failed to translate Description", error);
+//         return booking;
+//     }
 
-    booking.property = translatedProperty;
+//     booking.property = translatedProperty;
 
-    return booking;
-};
+//     return booking;
+// };
 
