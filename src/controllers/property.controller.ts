@@ -220,7 +220,7 @@ const translateProperty = async (property: Property, targetLang: string, complet
         return obj;
     }, {} as { [key: string]: any });
 
-    const propertyString = JSON.stringify(propertyToTranslate, null, 2);
+    const propertyString : string = JSON.stringify(propertyToTranslate, null, 2);
 
     const params: OpenAI.Chat.ChatCompletionCreateParams = {
         messages: [
@@ -242,7 +242,6 @@ const translateProperty = async (property: Property, targetLang: string, complet
     try {
         const translatedText : string | null = chatCompletion.choices[0].message.content;
         translatedProperty = JSON.parse(`${translatedText}`);
-        console.log(translatedProperty);
     } catch (error) {
         console.error("Failed to parse the translated JSON");
         return property;

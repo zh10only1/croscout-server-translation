@@ -118,7 +118,6 @@ const translateFeedback = async (feedback: Feedback, targetLang: string): Promis
 
     try {
         translatedComment = chatCompletion.choices[0].message.content !== null ? chatCompletion.choices[0].message.content : "";
-        console.log(translatedComment);
     } catch (error) {
         console.error("Failed to parses translated Feedback");
         return feedback;
