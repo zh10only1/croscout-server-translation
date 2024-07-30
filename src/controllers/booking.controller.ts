@@ -482,19 +482,62 @@ export const submitTransactionId = async (req: Request, res: Response, next: Nex
 
 export const translateBookings = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { bookings, lng }: { bookings: Booking[], lng: string } = req.body;
+        const { bookings, lng, statusOnly }: { bookings: Booking[], lng: string, statusOnly: boolean } = req.body;
 
         if (!bookings || !Array.isArray(bookings)) return res.status(400).json({ error: 'Invalid Bookings format' });
         if (!lng) return res.status(400).json({ error: 'Language parameter is required' });
 
         let translatedBookings: Booking[] = [];
-        translatedBookings = await Promise.all(bookings.map((booking) => translateBooking(booking, lng)));
-        
+
+        if (statusOnly === false) {
+            translatedBookings = await Promise.all(bookings.map((booking) => translateBooking(booking, lng)));
+        } else {
+            translatedBookings = await Promise.all(bookings.map((booking) => translateStatus(booking, lng)));
+        }
+
         res.status(200).json({ success: true, translatedBookings });
     } catch (error) {
         res.status(500).json({ success: false, error: `Failed to translate Bookings ${error}` });
     }
 };
+
+const translateStatus = async (booking: Booking, targetLang: string): Promise<Booking> => {
+    let openai: OpenAI;
+
+    try {
+        openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY // This is the default and can be omitted
+        });
+    } catch (error) {
+        console.error("Failed to initialize OpenAI API");
+        return booking;
+    }
+
+    const params: OpenAI.Chat.ChatCompletionCreateParams = {
+        messages: [
+            { role: 'system', content: `You are a helpful assistant that translates text into ${supportedLanguages[targetLang]} Language and returns the translated text.` },
+            { role: 'user', content: `Translate the following text to ${supportedLanguages[targetLang]} Language:\n\n${booking.status}` },
+        ],
+        model: 'gpt-3.5-turbo',
+    };
+
+    let chatCompletion: OpenAI.Chat.ChatCompletion;
+    try {
+        chatCompletion = await openai.chat.completions.create(params);
+    } catch (error) {
+        console.error("Failed to translate Booking status with OpenAI API");
+        return booking;
+    }
+
+    try {
+        booking.status = chatCompletion.choices[0].message.content !== null ? chatCompletion.choices[0].message.content : booking.status;
+    } catch (error) {
+        console.error("Failed to parses translated Status");
+        return booking;
+    }
+
+    return booking;
+}
 
 
 const translateBooking = async (booking: Booking, targetLang: string): Promise<Booking> => {
@@ -519,7 +562,7 @@ const translateBooking = async (booking: Booking, targetLang: string): Promise<B
     }, {} as { [key: string]: any });
 
     objectToTranslate['bookingStatus'] = booking.status;
-    const objectString : string = JSON.stringify(objectToTranslate, null, 2);
+    const objectString: string = JSON.stringify(objectToTranslate, null, 2);
 
     const params: OpenAI.Chat.ChatCompletionCreateParams = {
         messages: [
@@ -536,11 +579,11 @@ const translateBooking = async (booking: Booking, targetLang: string): Promise<B
         console.error("Failed to translate Booking data with OpenAI API");
         return booking;
     }
-    
 
-    let translatedObject : { [key: string]: any } = {};
+
+    let translatedObject: { [key: string]: any } = {};
     try {
-        const translatedText : string | null = chatCompletion.choices[0].message.content;
+        const translatedText: string | null = chatCompletion.choices[0].message.content;
         translatedObject = JSON.parse(`${translatedText}`);
     } catch (error) {
         console.error("Failed to parse the translated JSON");
