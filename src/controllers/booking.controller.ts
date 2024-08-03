@@ -515,7 +515,7 @@ const translateStatus = async (booking: Booking, targetLang: string): Promise<Bo
 
     const params: OpenAI.Chat.ChatCompletionCreateParams = {
         messages: [
-            { role: 'system', content: `You are a helpful assistant that translates text into ${supportedLanguages[targetLang]} Language and returns the translated text.` },
+            { role: 'system', content: `You are a helpful assistant that only translates the given text into ${supportedLanguages[targetLang]} Language and returns the translated text. Don't start explaining the meaning of the text or anything` },
             { role: 'user', content: `Translate the following text to ${supportedLanguages[targetLang]} Language:\n\n${booking.status}` },
         ],
         model: 'gpt-3.5-turbo',
