@@ -3,7 +3,11 @@ import Feedback, { IFeedback } from '../models/feedback.model';
 import Property from '../models/property.model';
 import User, { UserDocument } from '../models/user.model';
 import Booking from '../models/booking.model';
-import { translateText } from '../utility/translation';
+import { supportedLanguages } from '../utility/translation';
+import OpenAI from "openai";
+import { config as dotenvConfig } from 'dotenv';
+
+dotenvConfig();
 
 export interface Feedback {
     _id: string;
@@ -75,15 +79,7 @@ export const translateFeedbacks = async (req: Request, res: Response, next: Next
 
         let translatedFeedbacks: Feedback[] = [];
 
-        // hr == Croatian language
-        if (lng === 'hr') {
-            //Handling croatian translation using OpenAI
-            // translatedFeedbacks = await Promise.all(feedbacks.map((property) => translatePropertyCroatian(property)));
-        }
-        else {
-            // Handling other languages using LibreTranslate
-            translatedFeedbacks = await Promise.all(feedbacks.map((feedback) => translateFeedback(feedback, lng)));
-        }
+        translatedFeedbacks = await Promise.all(feedbacks.map((feedback) => translateFeedback(feedback, lng)));
 
         res.status(200).json({ success: true, translatedFeedbacks });
     } catch (error) {
@@ -94,13 +90,39 @@ export const translateFeedbacks = async (req: Request, res: Response, next: Next
 const translateFeedback = async (feedback: Feedback, targetLang: string): Promise<Feedback> => {
     let translatedComment: string = '';
 
+    let openai: OpenAI;
     try {
-        translatedComment = await translateText(feedback.comment, targetLang);
+        openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY // This is the default and can be omitted
+        });
     } catch (error) {
-        console.error("Failed to translate comment of feedback", error);
+        console.error("Failed to initialize OpenAI API");
         return feedback;
     }
 
-    const translatedFeedback: Feedback = { ...feedback, comment: translatedComment };
+    const params: OpenAI.Chat.ChatCompletionCreateParams = {
+        messages: [
+            { role: 'system', content: `You are a helpful assistant that translates text into ${supportedLanguages[targetLang]} Language and returns the translated text.` },
+            { role: 'user', content: `Translate the following text to ${supportedLanguages[targetLang]} Language:\n\n${feedback.comment}` },
+        ],
+        model: 'gpt-3.5-turbo',
+    };
+
+    let chatCompletion: OpenAI.Chat.ChatCompletion;
+    try {
+        chatCompletion = await openai.chat.completions.create(params);
+    } catch (error) {
+        console.error("Failed to translate Feedback with OpenAI API");
+        return feedback;
+    }
+
+    try {
+        translatedComment = chatCompletion.choices[0].message.content !== null ? chatCompletion.choices[0].message.content : "";
+    } catch (error) {
+        console.error("Failed to parses translated Feedback");
+        return feedback;
+    }
+
+    const translatedFeedback: Feedback = translatedComment !== "" ? { ...feedback, comment: translatedComment } : feedback;
     return translatedFeedback;
 };

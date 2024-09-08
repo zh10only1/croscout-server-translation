@@ -6,7 +6,11 @@ import nodemailer from 'nodemailer';
 import mongoose from 'mongoose';
 import Transaction from '../models/transaction.model';
 import { transporter } from '../utility/mailer';
-import { translateText } from '../utility/translation';
+import OpenAI from "openai";
+import { supportedLanguages } from '../utility/translation';
+import { config as dotenvConfig } from 'dotenv';
+dotenvConfig();
+
 
 // Define the Owner interface
 interface IOwner {
@@ -478,20 +482,17 @@ export const submitTransactionId = async (req: Request, res: Response, next: Nex
 
 export const translateBookings = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { bookings, lng }: { bookings: Booking[], lng: string } = req.body;
+        const { bookings, lng, statusOnly }: { bookings: Booking[], lng: string, statusOnly: boolean } = req.body;
 
         if (!bookings || !Array.isArray(bookings)) return res.status(400).json({ error: 'Invalid Bookings format' });
         if (!lng) return res.status(400).json({ error: 'Language parameter is required' });
 
         let translatedBookings: Booking[] = [];
 
-        // hr == Croatian language
-        if (lng === 'hr') {
-            //Handling croatian translation using OpenAI
-        //     translatedBookings = await Promise.all(bookings.map((booking) => translatePropertyCroatian(property)));
-        } else {
-            // Handling other languages using LibreTranslate
+        if (statusOnly === false) {
             translatedBookings = await Promise.all(bookings.map((booking) => translateBooking(booking, lng)));
+        } else {
+            translatedBookings = await Promise.all(bookings.map((booking) => translateStatus(booking, lng)));
         }
 
         res.status(200).json({ success: true, translatedBookings });
@@ -500,50 +501,101 @@ export const translateBookings = async (req: Request, res: Response, next: NextF
     }
 };
 
-
-const translateBooking = async (booking: Booking, targetLang: string): Promise<Booking> => {
-    try {
-        booking.status = await translateText(booking.status, targetLang);
-    } catch (error) {
-        console.error("Failed to translate confirmation status of booking", error);
-        return booking; // Return original booking if translation fails
-    }
-
-    // Combine all field values into a single string separated by newlines
-    const translatableFields: string[] = ['location', 'propertyType'];
-    const propertyText: string = translatableFields
-        .map(field => booking.property[field])
-        .join('\n');
-
-    let translatedText: string = '';
-    try {
-        translatedText = await translateText(propertyText, targetLang);
-    } catch (error) {
-        console.error("Failed to translate key value pairs of property", error);
-        return booking; // Return original booking if translation fails
-    }
-
-    // Split the translated text back into individual field values
-    const translatedValues: string[] = translatedText.split('\n');
-    const translatedProperty: Property = { ...booking.property };
-
-    // Assign the translated values back to the respective fields
-    translatableFields.forEach((field, index) => {
-        translatedProperty[field] = translatedValues[index];
-    });
-
-    booking.property = translatedProperty;
-
-    if (!translatedProperty.description || translatedProperty.description === '') return booking;
+const translateStatus = async (booking: Booking, targetLang: string): Promise<Booking> => {
+    let openai: OpenAI;
 
     try {
-        translatedProperty.description = await translateText(translatedProperty.description, targetLang);
+        openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY // This is the default and can be omitted
+        });
     } catch (error) {
-        console.error("Failed to translate Description", error);
+        console.error("Failed to initialize OpenAI API");
         return booking;
     }
 
-    booking.property = translatedProperty;
+    const params: OpenAI.Chat.ChatCompletionCreateParams = {
+        messages: [
+            { role: 'system', content: `You are a helpful assistant that only translates the given text into ${supportedLanguages[targetLang]} Language and returns the translated text. Don't start explaining the meaning of the text or anything. Also translate to standard text or which is more normally used in ${supportedLanguages[targetLang]} Language.` },
+            { role: 'user', content: `Translate the following text to ${supportedLanguages[targetLang]} Language:\n\n${booking.status}` },
+        ],
+        model: 'gpt-3.5-turbo',
+    };
+
+    let chatCompletion: OpenAI.Chat.ChatCompletion;
+    try {
+        chatCompletion = await openai.chat.completions.create(params);
+    } catch (error) {
+        console.error("Failed to translate Booking status with OpenAI API");
+        return booking;
+    }
+
+    try {
+        booking.status = chatCompletion.choices[0].message.content !== null ? chatCompletion.choices[0].message.content : booking.status;
+    } catch (error) {
+        console.error("Failed to parses translated Status");
+        return booking;
+    }
+
+    return booking;
+}
+
+
+const translateBooking = async (booking: Booking, targetLang: string): Promise<Booking> => {
+    let openai: OpenAI;
+
+    try {
+        openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY // This is the default and can be omitted
+        });
+    } catch (error) {
+        console.error("Failed to initialize OpenAI API");
+        return booking;
+    }
+
+    const translatableFields: string[] = ['location', 'propertyType', 'description'];
+
+    const objectToTranslate = translatableFields.reduce((obj, key) => {
+        if (key in booking.property) {
+            obj[key] = booking.property[key];
+        }
+        return obj;
+    }, {} as { [key: string]: any });
+
+    objectToTranslate['bookingStatus'] = booking.status;
+    const objectString: string = JSON.stringify(objectToTranslate, null, 2);
+
+    const params: OpenAI.Chat.ChatCompletionCreateParams = {
+        messages: [
+            { role: 'system', content: `You are a helpful assistant that translates a JSON object's values (not keys) into ${supportedLanguages[targetLang]} Language and returns the JSON object which has the translated values.` },
+            { role: 'user', content: `Translate the following JSON object's values to ${supportedLanguages[targetLang]} Language:\n\n${objectString}` },
+        ],
+        model: 'gpt-3.5-turbo',
+    };
+
+    let chatCompletion: OpenAI.Chat.ChatCompletion;
+    try {
+        chatCompletion = await openai.chat.completions.create(params);
+    } catch (error) {
+        console.error("Failed to translate Booking data with OpenAI API");
+        return booking;
+    }
+
+
+    let translatedObject: { [key: string]: any } = {};
+    try {
+        const translatedText: string | null = chatCompletion.choices[0].message.content;
+        translatedObject = JSON.parse(`${translatedText}`);
+    } catch (error) {
+        console.error("Failed to parse the translated JSON");
+        return booking;
+    }
+
+    booking.status = translatedObject['bookingStatus'];
+    translatableFields.forEach((field) => {
+        if (field in booking.property) {
+            booking.property[field] = translatedObject[field];
+        }
+    });
 
     return booking;
 };
